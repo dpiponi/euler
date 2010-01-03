@@ -1,3 +1,5 @@
+Does this work?
+
 > import Data.Array
 
 > grid f = array ((0, 0), (19, 19)) [((x, y), f (x, y))| x <- [0..19], y <- [0..19]]
