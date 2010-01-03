@@ -26,8 +26,19 @@ Does this work?
 
 > circle (cx, cy) r (x, y) = if (x-cx)^2+(y-cy)^2 < r*r then 1 else 0
 
-> h (x, y) = circle (8, 9) 7 (x, y) + circle (13, 13) 3 (x, y) + circle (8, 14) 6 (x, y)
+> fn (x, y) = circle (8, 9) 7 (x, y) + circle (13, 13) 3 (x, y) + circle (8, 14) 6 (x, y)
 
-> test s = euler (grid (\(x,y) -> h(x,y)>s))
+> test s = euler (grid (\(x,y) -> fn (x,y)>s))
 
 > sense = sum $ map test [0..10]
+
+> kernel (False, False, True,  False) =  1
+> kernel (True,  False, False, True)  = -1
+> kernel (True,  False, True,  True)  = -1
+> kernel _                            =  0
+
+> sense' f = let coords = [(x, y) | x <- [0..20], y <- [0..20]]
+>                h g (i, j) = (g (i, j), g (i+1, j), g (i, j+1), g (i+1, j+1))
+>                t n = \(x, y) -> fn (x, y)>n
+>                s n = sum $ map (t n) coords
+>            in s 0+s 1+s 2+s 3
