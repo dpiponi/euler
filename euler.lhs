@@ -64,8 +64,8 @@ Does this work?
 
 > main = print $ sense' fn
 
-\begin{tikzpicture} \filldraw [gray] (0,0) circle (2pt)
-(1,1) circle (2pt) (2,1) circle (2pt) (2,0) circle (2pt);
-\draw (0,0) .. controls (1,1) and (2,1) .. (2,0); \end{tikzpicture}
+\begin{tikzpicture}
+\draw (0,0) -- (1,1) -- (1,0) -- (0,0);
+\end{tikzpicture}
 
 \end{document}
