@@ -65,7 +65,15 @@ Does this work?
 > main = print $ sense' fn
 
 \begin{tikzpicture}
+<<<<<<< HEAD
 \draw (0,0) -- (1,1) -- (1,0) -- (0,0);
+=======
+
+%\draw (0,0) -- (2,0);
+\draw (2,0) .. controls (2.3,0) and (2.5,0.2) .. (2.5,.4);
+\draw (2,1) .. controls (2.4,1) and (2.5,0.8) .. (2.5,.6);
+
+>>>>>>> cb0e9e1762f50073e8e18b34259d9f9a70dc88a9
 \end{tikzpicture}
 
 \end{document}
