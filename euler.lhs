@@ -14,10 +14,17 @@
 %include lhs2TeX.sty
 
 %options ghci
+\begin{document}
 
-\begin{document} 
+\title{Counting Targets using the Euler Characteristic, Part 1}
+\author{D Piponi}
+\maketitle
+
+
 \section{A Statement of the Problem}
-The problem I ultimately want to solve is described in the paper \href{http://www.math.uiuc.edu/~ghrist/preprints/eulerenumerationpart1.pdf}{Target Enumeration via Euler Characteristic Integrals}. Suppose we have a set of targets we want to count. This could be anything from enemy tanks rolling over the plains to electronically tagged wildlife roaming the countryside. Each target has a region of influence, which might simply be circular in shape, or might be more complex and depend on the target. Now suppose that we have a high density of sensors scattered over our domain and that each sensor can tell us how many regions of influence it lies in. So, roughly speaking, each sensor counts how many targets are nearby. How do we compute how many targets we have in total?
+The problem I ultimately want to solve, and its solution, is described in the paper \href{http://www.math.uiuc.edu/~ghrist/preprints/eulerenumerationpart1.pdf}{Target Enumeration via Euler Characteristic Integrals}. My goal here is to show how to implement that solution on a computer and make it accessible to a wider audience.
+
+Suppose we have a set of targets we want to count. This could be anything from enemy tanks rolling over the plains to electronically tagged wildlife roaming the countryside. Each target has a region of influence which might simply be circular in shape, or might be more complex and depend on the target. Now suppose that we have a high density of sensors scattered over our domain and that each sensor can tell us how many regions of influence it lies in. Roughly speaking, each sensor counts how many targets are nearby. How do we compute how many targets we have in total?
 
 Here's an illustration:
 
@@ -49,11 +56,11 @@ Here's an illustration:
 
 There are four targets. The region of influence for each one is coloured making it easy to see which region is which. I've labelled each region with an integer showing how many targets can be detected in that region. The idea is that we'd have a very dense scattering of sensors in our domain, each sensor reporting an integer. In effect we'd be getting an image like a rasterised version of that picture. But we wouldn't be getting the convenient colours, just an integer per pixel.
 
-At first it seems like a trivial problem. The sensors can all count, and if every target is in range of a sensor, every target will be counted. But we can't simply add the numbers from all of the sensors as many sensors will be in the domain of influence of the same target. If we sum all of the numbers we'll be counting each target many time over. We need to be able to subtract off the targets that are counted twice. But some targets will be counted 3 times and so on. And how do we tell when a target has been counted twice when all we have are counts?
+At first it seems like a trivial problem. The sensors can all count, and if every target is in range of a sensor, every target will be counted. But we can't simply add the numbers from all of the sensors as many sensors will be in the domain of influence of the same target. If we sum all of the numbers we'll be counting each target many times over. We need to be able to subtract off the targets that are counted twice. But some targets will be counted three times and so on. And how do we tell when a target has been counted twice when all we have are counts?
 
 We'll make one simplifying assumption in solving this problem: that the regions of influence are simply connected. In other words, they are basically some kind of shape that doesn't have holes in it. That could mean anything from a square or disk to a shape like the letter 'W'. But it excludes shapes like annuli or the letter 'B'. If we make this assumption then we can solve this problem with a very simple algorithm that will work in almost all cases. In fact, the only time it fails will be situations where no algorithm could possibly work. But there's a little ground to cover before getting to the solution.
 
-We'll make another simplifying assumption for now. That the sensors are arranged in a rectangular grid. So the data we get back from the sensors will be a grid filled with integers. That essentially turns our problem into one of image processing and we can think of sensor values as pixels.
+We'll make another simplifying assumption for now. That the sensors are arranged in a rectangular grid. So the data we get back from the sensors will be a grid filled with integers. That essentially turns our problem into one of image processing and we can think of sensor values as pixels. Here's a picture where I've drawn one domain of influence and I've indicated the values returned for three of the sensors.
 \begin{center}
 \begin{tikzpicture}[scale = 1]
 
@@ -79,23 +86,24 @@ We'll assume that we get zero if we try to read from beyond our domain. We can r
 
 > data Grid = Grid Int Int Field
 
-For efficiency something of type |Field| ought to read data from an array, but I'll make no such assumption.
+For efficiency something of type |Field| ought to read data from an array, but I'll not be assuming arrays here.
 
-We can define addition of two grids:
+We can define display and addition of two grids:
 
-> instance Eq Grid where
->   _ == _ = False
+> instance Eq Grid
 
 > instance Show Grid where
 >   show (Grid w h f) = concat
 >       [[digit (f x y) | x <- [0..w-1]] ++ "\n" | y <- [0..h-1]]
+> digit 0 = '.'
+> digit n = chr (48+n)
 
 > instance Num Grid where
 >   Grid w0 h0 f0 + Grid w1 h1 f1 = Grid
 >       (w0 `max` w1) (h0 `max` h1)
 >       (\x y -> f0 x y + f1 x y)
 
-We want to define some kind of count function with signature:
+Ourultimate goal is to define some kind of count function with signature:
 
 < count :: Grid -> Int
 
@@ -107,12 +115,16 @@ So at least approximately, |count| is additive. We also need it to be translatio
 
 > gsum (Grid w h f) = sum [f x y | x <- [0..w-1], y <- [0..h-1]]
 
+We can implement functions to make some example grids:
+
 > point x y = Grid  (x+1) (y+1)
 >                   (\x0 y0 -> if (x0, y0) == (x,y) then 1 else 0)
 > circle x y r = Grid  (x+r+1) (y+r+1)
 >                      (\x0 y0 -> if (x-x0)^2+(y-y0)^2<r^2 then 1 else 0)
 
-> test1 = circle 10 10 5+circle 7 13 4
+And now we can build and display some examples:
+
+> test1 = circle 10 10 5+circle 7 13 4+point 5 5+point 9 12
 > test2 = gsum test1
 
 Here's a typical output:
@@ -123,46 +135,39 @@ Here's a typical output:
 ................
 ................
 ................
-................
+.....1..........
 ........11111...
 .......1111111..
 ......111111111.
 ......111111111.
 .....1222211111.
 ....11222221111.
-....11222221111.
+....11222321111.
 ....1112222111..
 ....111122211...
 ....1111111.....
 .....11111......
 ................
 *Main> test2
-114
+116
 \end{verbatim}
 
-
-
-> digit 0 = '.'
-> digit n = chr (48+n)
-
-It should be pretty clear that this doesn't count the number of targets.
-
-So how can we keep additivity and yet count targets?
+It should be pretty clear that this doesn't count the number of targets. So how can we implement something additive and yet count targets?
 
 Another operation we can perform on grids is scale them. Here's an implementation of scaling a grid:
 
 > scale n (Grid w h f) =  Grid (w*n) (h*n)
 >                         (\x y -> f (x `div` n) (y `div` n))
 
-Scaling up an 'image' shouldn't change the number of targets detected. It should only correspond to the same number of targets with double-sized regions of influence. So we'd also like this property:
+Scaling up an `image' shouldn't change the number of targets detected. It should only correspond to the same number of targets with double-sized regions of influence. So we'd also like this property:
 
 < count (n `scale` f) = count f
 
-It's easy to see that it actually has this property for $n>0$:
+It's easy to see that that |gsum| actually has this property for $n>0$:
 
-< count (n `scale` f) = n^2 * count f
+< gsum (n `scale` f) = n^2 * gsum f
 
-These requirements are pretty tough to meet with an additive operation. But there's an amazing transformation we can perform on the data first. Instead of working on a grid with one value for each pixel we'll also store values for the 'edges' between pixels and for the 'vertices' at the corners of pixels.
+(|^| is the power function. For some reason lhs2TeX displays it as an up arrow.) These requirements are pretty tough to meet with an additive operation. But there's an amazing transformation we can perform on the data first. Instead of working on a grid with one value for each pixel we'll also store values for the 'edges' between pixels and for the 'vertices' at the corners of pixels.
 
 \section{Euler Grids}
 So lets define a new kind of grid to be a tuple of |Field| functions, one for faces (ie. the pixels), one for horizontal edges, one for vertical edges, and one for vertices.
@@ -172,15 +177,15 @@ So lets define a new kind of grid to be a tuple of |Field| functions, one for fa
 >       faces::Field, hedges::Field, vedges::Field, vertices::Field
 >   }
 
-The lower left vertex is |(0,0)| but we need to add an extra row and column of vertices on the right. Similarly we'll need an extra row and an extra column of edges.  We can now 'resample' our original grid onto one of these new style grids:
+The lower left vertex is |(0,0)| but we need to add an extra row and column of vertices on the right. Similarly we'll need an extra row and an extra column of edges.  We can now `resample' our original grid onto one of these new style grids:
 
 > g2e (Grid w h f) = EGrid w h
 >   f
->   (\x y  -> f (x-1)  y      `min` f x y)
->   (\x y  -> f x      (y-1)  `min` f x y)
->   (\x y  -> f (x-1)  (y-1)  `min` f (x-1) y `min` f x (y-1) `min` f x y)
+>   (\x y  -> f (x-1)  y      `max` f x y)
+>   (\x y  -> f x      (y-1)  `max` f x y)
+>   (\x y  -> f (x-1)  (y-1)  `max` f (x-1) y `max` f x (y-1) `max` f x y)
 
-I'm using the rule that the value along an edge will be the minimum of the values on the two impinging faces. Similarly, the vertices acquire the minimum of the four faces they meet.
+I'm using the rule that the value along an edge will be the maximum of the values on the two impinging faces. Similarly, the vertices acquire the maximum of the four faces they meet.
 
 I'll try to illustrate that here:
 \begin{center}
@@ -204,17 +209,17 @@ I'll try to illustrate that here:
 \coordinate[circle,fill,minimum size=3pt,outer sep=0pt,inner sep=0pt] (i) at (3,3);
 \coordinate[circle,fill,minimum size=3pt,outer sep=0pt,inner sep=0pt] (j) at (1,2);
 \coordinate[circle,fill,minimum size=3pt,outer sep=0pt,inner sep=0pt] (k) at (1,3);
-
 \node at (1.5,1.5) {$1$};
-\node[below left] at (a) {$0$};
-\node[below] at (1.5,1) {$0$};
-\node[left] at (1,1.5) {$0$};
-\node[left] at (1,2) {$0$};
+\node[below left] at (a) {$1$};
+\node[below] at (1.5,1) {$1$};
+\node[left] at (1,1.5) {$1$};
+\node[left] at (1,2) {$1$};
 \node[above right] at (2,2) {$1$};
 \node[right] at (2,1.5) {$1$};
 \node at (1.5,2.5) {$1$};
 \node at (1.5,3.5) {$0$};
-
+\node[above] at (1.5,4) {$0$};
+\node[above right] at (2,4) {$0$};
 \end{tikzpicture}
 \end{center}
 I hope you can see, from the placement of the labels, how I've attached values to edges and vertices as well as faces.
@@ -227,7 +232,7 @@ We now have a bit more freedom. We have three different types of sum we can carr
 
 (We could sum over horizontal and vertical edges separately too, but if we did that then a 90 degree rotation would give a different target count.)
 
-Now we can define a measurement function that takes three 'weights' and gives us back a weighted sum:
+Now we can define a measurement function that takes three `weights' and gives us back a weighted sum:
 
 > measure a b c g = let e = g2e g in a*vsum e+b*esum e+c*fsum e
 
